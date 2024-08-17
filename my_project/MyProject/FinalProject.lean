@@ -18,7 +18,7 @@ and X is PD if and only if λ(X) > 0. Whence, for a PSD matrix X we define  √X
 
 For n×n Hermitian matrices X and S, we declare that X ≼ S if S - X is positive semidefinite. An interesting
 results, is that if 0 ≼ X ≼ S then √X ≼ √S. In other words the map f : ℍⁿ₊ → ℍⁿ₊ given by f(X) = √X
-is operator monotone, which is to say that if X,S ∈ ℍⁿ₊ such that X ≼ S, then f(x) ≼ f(S).
+is operator monotone, which is to say that if X,S ∈ ℍⁿ₊ such that X ≼ S, then f(x) ≼ f(S).-/
 
 import Mathlib.Data.Set.Lattice
 import Mathlib.LinearAlgebra.Matrix.PosDef
@@ -85,7 +85,8 @@ instance : PartialOrder (Matrix n n 𝕜) where
     /- Consider the jth standard basis vector for 𝕜ⁿ -/
     let e_j : n → 𝕜 := fun k ↦ if k = j then 1 else 0
     have h₉ : ∀ (X: Matrix n n 𝕜), ∀ i, (X *ᵥ e_j) i = X i j := by
-      simp_rw[mulVec, dotProduct, e_j, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ]
+      simp_rw[mulVec, dotProduct, e_j, mul_ite, mul_one, mul_zero, 
+      Finset.sum_ite_eq', Finset.mem_univ]
       tauto
     rw[←(h₉ X), ← (h₉ S)]
     exact (fun i ↦ congrFun (h₄ e_j) i) i
@@ -124,16 +125,19 @@ theorem GePSDImpliesPSD (Xpsd : X.PosSemidef)
   simp at h₀
   exact h₀
 
-/-Suppose that X and S are n×n Hermitian matrices such that that X ≼ S and X is PD. Then, S is PD. -/
+/-Suppose that X and S are n×n Hermitian matrices such that that X ≼ S and X is PD. 
+Then, S is PD. -/
 theorem PD_ge_implies_PD (Xpd : X.PosDef) (XleS : X ≤ S) : S.PosDef := by
   have h₀ : (S - X + X).PosDef := by
     exact PosDef.posSemidef_add XleS Xpd
   simp at h₀
   exact h₀
 
-/- The following proves that the trace of an n×n Hermitian matrix X is equal to the sum of its eigenvalues.
-Of course this is true for any n×n matrix, but for simplicity, it is stated in terms of Hermitian matrices.-/
-theorem trace_eq_sum_eigenvalues (hHerm : X.IsHermitian) : X.trace = ∑ i, (hHerm.eigenvalues i : 𝕜) := by
+/- The following proves that the trace of an n×n Hermitian matrix X is equal to 
+the sum of its eigenvalues. Of course this is true for any n×n matrix, but for 
+simplicity, it is stated in terms of Hermitian matrices.-/
+theorem trace_eq_sum_eigenvalues (hHerm : X.IsHermitian) : 
+  X.trace = ∑ i, (hHerm.eigenvalues i : 𝕜) := by
   sorry
 
 /-If X is PSD, then its trace is nonnegative. This is a trivial consequence of the fact
@@ -253,3 +257,6 @@ and it would likely take some time to formalize. -/
 theorem sqrtOpMonotone (Xpsd : X.PosSemidef) (Spsd : S.PosSemidef)
 (XleS : X ≤ S) : Xpsd.sqrt ≤ Spsd.sqrt := by
   sorry
+
+end PSD
+end Matrix
