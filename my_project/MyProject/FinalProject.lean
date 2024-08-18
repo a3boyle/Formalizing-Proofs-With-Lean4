@@ -17,7 +17,7 @@ and X is PD if and only if λ(X) > 0. Whence, for a PSD matrix X we define  √X
 √λ(X) := (√λ₁(X),⋯,√λₙ(X)). It is easy to show that √X is positive semidefinite and √X * √X = X.
 
 For n×n Hermitian matrices X and S, we declare that X ≼ S if S - X is positive semidefinite. An interesting
-results, is that if 0 ≼ X ≼ S then √X ≼ √S. In other words the map f : ℍⁿ₊ → ℍⁿ₊ given by f(X) = √X
+result, is that if 0 ≼ X ≼ S then √X ≼ √S. In other words the map f : ℍⁿ₊ → ℍⁿ₊ given by f(X) = √X
 is operator monotone, which is to say that if X,S ∈ ℍⁿ₊ such that X ≼ S, then f(x) ≼ f(S).-/
 
 import Mathlib.Data.Set.Lattice
@@ -263,7 +263,6 @@ theorem PSDiffTraceProdNonNeg (XHerm: X.IsHermitian)
   exact outer_prod_PSD x
 
 /- I never was able to actually formalize the following proof
-(again relating to my issues formalizing the Loewener ordering).
 A proof can be found on page 115 of Bhatia's Matrix Analysis. -/
 
 theorem sqrtInvertOpMonotone (Xpd : X.PosDef) (Spsd : S.PosSemidef)
