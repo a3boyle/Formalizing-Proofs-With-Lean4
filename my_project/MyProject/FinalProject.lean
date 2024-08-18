@@ -21,6 +21,7 @@ results, is that if 0 ≼ X ≼ S then √X ≼ √S. In other words the map f :
 is operator monotone, which is to say that if X,S ∈ ℍⁿ₊ such that X ≼ S, then f(x) ≼ f(S).-/
 
 import Mathlib.Data.Set.Lattice
+import Mathlib.LinearAlgebra.Eigenspace.Basic
 import Mathlib.LinearAlgebra.Matrix.PosDef
 import Mathlib.LinearAlgebra.Matrix.Hermitian
 import Mathlib.LinearAlgebra.Matrix.Spectrum
@@ -85,14 +86,14 @@ instance : PartialOrder (Matrix n n 𝕜) where
     /- Consider the jth standard basis vector for 𝕜ⁿ -/
     let e_j : n → 𝕜 := fun k ↦ if k = j then 1 else 0
     have h₉ : ∀ (X: Matrix n n 𝕜), ∀ i, (X *ᵥ e_j) i = X i j := by
-      simp_rw[mulVec, dotProduct, e_j, mul_ite, mul_one, mul_zero, 
-      Finset.sum_ite_eq', Finset.mem_univ]
+      simp_rw[mulVec, dotProduct, e_j, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ]
       tauto
     rw[←(h₉ X), ← (h₉ S)]
     exact (fun i ↦ congrFun (h₄ e_j) i) i
 
 section PSD
-variable {n : Type*} [Fintype n][DecidableEq n] {X S: Matrix n n 𝕜}
+
+variable {n : Type*} [Fintype n][DecidableEq n] [RCLike 𝕜] {X S: Matrix n n 𝕜}
 
 /- This following are trivial lemmas to make our life easier -/
 theorem LoewnerOrder_le_iff_diff_PSD : S ≤ X ↔ (X - S).PosSemidef := Iff.rfl
@@ -133,12 +134,25 @@ theorem PD_ge_implies_PD (Xpd : X.PosDef) (XleS : X ≤ S) : S.PosDef := by
   simp at h₀
   exact h₀
 
-/- The following proves that the trace of an n×n Hermitian matrix X is equal to 
-the sum of its eigenvalues. Of course this is true for any n×n matrix, but for 
+/- The following proves that the trace of an n×n Hermitian matrix X is equal 
+to the sum of its eigenvalues. Of course this is true for any n×n matrix, but for 
 simplicity, it is stated in terms of Hermitian matrices.-/
-theorem trace_eq_sum_eigenvalues (hHerm : X.IsHermitian) : 
-  X.trace = ∑ i, (hHerm.eigenvalues i : 𝕜) := by
-  sorry
+theorem trace_eq_sum_eigenvalues (hHerm : X.IsHermitian) 
+: X.trace = ∑ i, (hHerm.eigenvalues i : 𝕜) := by
+  have h₀ := hHerm.spectral_theorem
+  let Q : Matrix n n 𝕜 := ↑hHerm.eigenvectorUnitary
+  let D : Matrix n n 𝕜 := diagonal (RCLike.ofReal ∘ hHerm.eigenvalues)
+  have h₀ : X.trace = (Q * D * (star  Q)).trace := by
+    exact congrArg trace h₀
+  rw[Eq.symm (trace_mul_cycle D (star Q) Q)] at h₀
+  have h₁ : D * 1 = D := by
+    exact Matrix.mul_one D
+  rw[←UnitaryGroup.star_mul_self hHerm.eigenvectorUnitary] at h₁
+  rw[←Matrix.mul_assoc D (star Q) Q] at h₁
+  rw[h₁] at h₀
+  have h₇ : D.trace =  ∑ i : n, ↑(hHerm.eigenvalues i) := by
+    exact trace_diagonal (RCLike.ofReal ∘ hHerm.eigenvalues)
+  rwa[h₀]
 
 /-If X is PSD, then its trace is nonnegative. This is a trivial consequence of the fact
 that the eigenvalues of a PSD matrix are nonnegative. -/
@@ -155,7 +169,7 @@ whose entries are given by κ. -/
 def castScalar (κ : 𝕜) (n : Type*) : Matrix n n 𝕜 :=
   of fun _ _ => κ
 
-/- If κ ∈ ℂ then κ = Tr(κ). -/
+/- If κ ∈ ℂ then κ = Tr(κ)-/
 lemma trace_scalar (κ : 𝕜) : κ = (castScalar κ (Fin 1)).trace := by
   exact Eq.symm (trace_fin_one (castScalar κ (Fin 1)))
 
@@ -170,24 +184,34 @@ theorem outer_prod_Hermitian(x: n → 𝕜) : (outerProd x).IsHermitian := by
   simp only [of_apply]
   exact fun i j ↦ star_mul_star (x j) (x i)
 
-/- In particular, xᴴx is positive semidefinite.-/
+/- In particular, xᴴx is positive semidefinite-/
 theorem outer_prod_PSD (x: n → 𝕜) : (outerProd x).PosSemidef := by
-  unfold PosSemidef
-  simp[outer_prod_Hermitian]
-  intro x_1
-  unfold outerProd
-  sorry
-
-/- Using the cyclic property of trace, it is not hard to see that Tr(Xxxᴴ) = Tr(xᴴXx)
-for a given x ∈ ℂⁿ, and n × n complex matrix X.-/
-lemma cyclic_outer_product_trace (x: n → 𝕜):
-(X * (outerProd x)).trace = (castScalar (star x ⬝ᵥ X *ᵥ x) (Fin 1)).trace := by
-  sorry
+  let X : Matrix n (Fin 1) 𝕜 := fun i _ ↦ x i
+  have Xpsd := posSemidef_self_mul_conjTranspose X
+  have OuterProdpsd : (X * Xᴴ) = outerProd x := by
+    refine ext ?_
+    simp[Matrix.mul_apply]
+    exact fun i j ↦ rfl
+  rwa[OuterProdpsd] at Xpsd
 
 /- Appealing to two previous lemmas, it follows that xᴴXx = Tr(Xxxᴴ). In particular, this result
 will be useful in the proof of the next theorem. -/
-theorem outer_product_trace {x : n → 𝕜} : (star x) ⬝ᵥ (X *ᵥ x) =  (X * (outerProd x)).trace:= by
-  simp[X.cyclic_outer_product_trace x, ← trace_scalar ((star x) ⬝ᵥ (X *ᵥ x))]
+lemma cyclic_outer_product_trace (x: n → 𝕜):
+(X * (outerProd x)).trace = (star x) ⬝ᵥ (X *ᵥ x):= by
+  let Y : Matrix n (Fin 1) 𝕜 := fun i _ ↦ x i
+  have OuterProd : (Y * Yᴴ) = outerProd x := by
+    refine ext ?_
+    simp[Matrix.mul_apply]
+    exact fun i j ↦ rfl
+  rw[← OuterProd]
+  have h₀ := trace_fin_one (Yᴴ * X * Y)
+  have h₁ : (Yᴴ * X * Y) 0 0 = (star x) ⬝ᵥ (X *ᵥ x) := by
+    simp[Y]
+    rw[Matrix.mul_apply, dotProduct_mulVec]
+    exact rfl
+  have h₂ := Matrix.mul_assoc X Y Yᴴ
+  simp [←h₁, ←h₀, ←h₂]
+  exact trace_mul_cycle X Y Yᴴ
 
 /-The following theorem proves that X is positive semidefinite if and only if Tr(XS) is nonnegative
 for all positive semidefintie matrices S.-/
@@ -234,17 +258,28 @@ theorem PSDiffTraceProdNonNeg (XHerm: X.IsHermitian)
   unfold PosSemidef
   simp [XHerm]
   intro x
-  rw[outer_product_trace]
+  rw[← cyclic_outer_product_trace]
   apply TrNonNeg
   exact outer_prod_PSD x
 
-/- I never was able to actually formalize the following proof.
+/- I never was able to actually formalize the following proof
+(again relating to my issues formalizing the Loewener ordering).
 A proof can be found on page 115 of Bhatia's Matrix Analysis. -/
 
 theorem sqrtInvertOpMonotone (Xpd : X.PosDef) (Spsd : S.PosSemidef)
 (XleS : X ≤ S) : (Xpd.posSemidef).sqrt ≤ Spsd.sqrt := by
+  have Xpsd := Xpd.posSemidef
   let A : Matrix n n 𝕜 := S * X⁻¹
-  sorry
+  let B : Matrix n n 𝕜 := (Xpsd.sqrt)⁻¹
+  let C : Matrix n n 𝕜 := B * X * B 
+  have Bpsd := PosSemidef.inv (PosSemidef.posSemidef_sqrt Xpsd)
+  have Bherm : Bᴴ = B := by 
+    exact Bpsd.1
+  have Cpsd : PosSemidef C := by
+    simp[C]
+    nth_rw 1 [← Bherm]
+    exact PosSemidef.conjTranspose_mul_mul_same Xpsd B 
+  sorry  
 
 /- Note that the theorem statement above supposes that X is PD.
 However,  we can prove operator monotonicity of the PSD squareroot in the case
@@ -252,11 +287,9 @@ in which the matrix X is PSD but not necessarily PD using the above theorem.
 Indeed, If 0 ≼ X ≼ S then (X + εI) is PD and (X + εI) ≼ (S + εI). Therefore,
 √(X + εI) ≼ √(S + εI), and taking ε → 0 and appealing to continuity
 of the map X ↦ √X concludes the result. However, there is a lot going on here,
-and it would likely take some time to formalize. -/
+ and it would likely take some time to formalize.
+-/
 
 theorem sqrtOpMonotone (Xpsd : X.PosSemidef) (Spsd : S.PosSemidef)
 (XleS : X ≤ S) : Xpsd.sqrt ≤ Spsd.sqrt := by
   sorry
-
-end PSD
-end Matrix
