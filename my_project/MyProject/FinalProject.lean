@@ -1,5 +1,6 @@
 /-
 # Loewner Ordering of the Space of n×n Hermitian Matrices
+# Written by: Aidan Boyle
 
 Denote by ℍⁿ to be the space of n×n Hermitian matrices, and let X ∈ ℍⁿ. Since the eigenvalues
 of Hermitian matrices are real, we can order the eigenvalues of X as λₙ(X)≤ ⋯ ≤ λ₁(X).
@@ -7,7 +8,7 @@ On this observation we denote by λ(X) = (λ₁(X),⋯,λₙ(X))∈ ℝⁿ the n
 eigenvalues for X. Also, we denote by Diag(λ(X)) to be the n×n diagonal matrix whose
 diagonal is given by λ(X). Furthermore, by the  Spectral Decomposition theorem there exists an
 orthonormal basis of ℂⁿ consisting of eigenvectors for X. Denote such basis by B = {q₁,⋯,qₙ}
-and let Q = [q₁ | ⋯ | qₙ] be the n×n complex matrix whose columns are determined by the basis B.
+and let Q = [q₁ | ⋯ | qₙ] be the n × n complex matrix whose columns are determined by the basis B.
 Then, it is easy to see that X = QDiag(λ(X))Qᴴ where Qᴴ denotes the conjugate transpose of Q.
 
 We say X ∈ ℍⁿ is positive semidefinite (PSD) if zᴴXz ≥ 0 for all z ∈ ℂⁿ. Similarly, we say that X
@@ -43,8 +44,8 @@ variable [RCLike 𝕜]
 open scoped Matrix
 
 /- For X,S ∈ ℍⁿ we define X ≼ S to mean that S - X is positive semidefinite.
-The following shows that this ordering is a partial ordering of ℍⁿ. For the 
-sake of simplicty of the formalization, we define the Loewner odering 
+The following shows that this ordering is a partial ordering of ℍⁿ. For the
+sake of simplicty of the formalization, we define the Loewner odering
 on the space of n by n matrices with entries from 𝕜. -/
 instance : PartialOrder (Matrix n n 𝕜) where
   le S X := (X - S).PosSemidef
@@ -126,7 +127,7 @@ theorem GePSDImpliesPSD (Xpsd : X.PosSemidef)
   simp at h₀
   exact h₀
 
-/-Suppose that X and S are n×n Hermitian matrices such that that X ≼ S and X is PD. 
+/-Suppose that X and S are n×n Hermitian matrices such that that X ≼ S and X is PD.
 Then, S is PD. -/
 theorem PD_ge_implies_PD (Xpd : X.PosDef) (XleS : X ≤ S) : S.PosDef := by
   have h₀ : (S - X + X).PosDef := by
@@ -134,10 +135,10 @@ theorem PD_ge_implies_PD (Xpd : X.PosDef) (XleS : X ≤ S) : S.PosDef := by
   simp at h₀
   exact h₀
 
-/- The following proves that the trace of an n×n Hermitian matrix X is equal 
-to the sum of its eigenvalues. Of course this is true for any n×n matrix, but for 
+/- The following proves that the trace of an n×n Hermitian matrix X is equal
+to the sum of its eigenvalues. Of course this is true for any n×n matrix, but for
 simplicity, it is stated in terms of Hermitian matrices.-/
-theorem trace_eq_sum_eigenvalues (hHerm : X.IsHermitian) 
+theorem trace_eq_sum_eigenvalues (hHerm : X.IsHermitian)
 : X.trace = ∑ i, (hHerm.eigenvalues i : 𝕜) := by
   have h₀ := hHerm.spectral_theorem
   let Q : Matrix n n 𝕜 := ↑hHerm.eigenvectorUnitary
@@ -164,6 +165,71 @@ theorem PSDTraceNonNeg (Xpsd : X.PosSemidef) : X.trace ≥ 0 := by
     exact fun i ↦ h₀ i
   exact le_of_le_of_eq h₁ (id (Eq.symm (trace_eq_sum_eigenvalues Xpsd.1)))
 
+/- If X is a positive semidefinite matrix with nonzero determinant, then X
+is positive definite. -/
+theorem PSDDetNonZeroPD (Xpsd : X.PosSemidef) (detNeZero : X.det ≠ 0) : PosDef X := by 
+  constructor
+  exact Xpsd.1
+  intro x xNeZero
+  have nonNeg := Xpsd.2
+  have pos : star x ⬝ᵥ X *ᵥ x ≠ 0 := by 
+    by_contra!
+    have eqZero := (PosSemidef.dotProduct_mulVec_zero_iff Xpsd x).mp this
+    have h₀ : ∃ v, v ≠ 0 ∧ X *ᵥ v = 0 := by
+      exact Filter.frequently_principal.mp fun a ↦ a xNeZero eqZero
+    have h₁ := exists_mulVec_eq_zero_iff_aux.mp h₀
+    contradiction
+  exact lt_of_le_of_ne (nonNeg x) (id (Ne.symm pos))
+
+/- We now prove that if X and S are posistive definite then so is SXS. The statement
+is still true if we only assume that S is square and of full rank, but for simplicity
+we state it for S being positive definite.  -/
+theorem mulPD_mulPD_same_PD (Xpd : X.PosDef)(Spd : S.PosDef) : PosDef (S * X * S) := by
+  constructor
+  nth_rw 1 [←Spd.1]
+  · exact isHermitian_conjTranspose_mul_mul S Xpd.1
+  intro x xNeZero
+  have SdetNeZero : det S ≠ 0 := by
+    exact PD_implies_nonzero_det Spd
+  have h₃ : star S = S := by 
+    exact Spd.1
+  have SNullTriv : S *ᵥ x ≠ 0 := by
+    by_contra!
+    have h₁ : S.det = 0:= by 
+      have h₂ : ∃ v, v≠ 0 ∧ S *ᵥ v = 0 := by
+        exact Filter.frequently_principal.mp fun a ↦ a xNeZero this
+      exact exists_mulVec_eq_zero_iff_aux.mp h₂
+    exact SdetNeZero h₁
+  have h₂ : star x ⬝ᵥ (S * X * S) *ᵥ x = star ( (star S) *ᵥ x) ⬝ᵥ X *ᵥ (S *ᵥ x) := by 
+    simp only [star_mulVec, dotProduct_mulVec, vecMul_vecMul]
+    rw[h₃, Spd.1]
+  rw[h₂]
+  nth_rw 1 [h₃]
+  exact Xpd.2 (S *ᵥ x) SNullTriv
+
+/- The next theorem shows that the inverse of a positive definite matrix
+is positive definite. -/
+theorem inv_of_posdef_is_posdef (Xpd : X.PosDef): X⁻¹.PosDef := by 
+  have invPSD : X⁻¹.PosSemidef := by
+    exact PosSemidef.inv (PosDef.posSemidef Xpd)
+  have invDetUnit := isUnit_nonsing_inv_det X (Ne.isUnit (PD_implies_nonzero_det Xpd))
+  have invDetNonZero := IsUnit.ne_zero invDetUnit
+  exact PSDDetNonZeroPD invPSD invDetNonZero
+
+/- If X is a positive definite matrix, then its positive semidefinite 
+square root is positive definite -/
+theorem sqrtPD_implies_PD (Xpd: X.PosDef) : PosDef ((Xpd.posSemidef).sqrt) := by 
+  have h₀ : (Xpd.posSemidef).sqrt.det^2 = X.det := by  
+    simp_rw[← Xpd.posSemidef.sqrt_mul_self, det_mul, pow_two]
+  have h₁ : X.det > 0 := by
+    exact PosDef.det_pos Xpd
+  rw[← h₀] at h₁
+  have h₂ : (Xpd.posSemidef).sqrt.det ≠ 0 := by
+    by_contra!
+    simp_rw[this] at h₁
+    linarith
+  exact PSDDetNonZeroPD (PosSemidef.posSemidef_sqrt (PosDef.posSemidef Xpd)) h₂
+  
 /- Given a scalar κ ∈ ℂ and a size n, we define a matrix of size n × n
 whose entries are given by κ. -/
 def castScalar (κ : 𝕜) (n : Type*) : Matrix n n 𝕜 :=
@@ -214,8 +280,7 @@ lemma cyclic_outer_product_trace (x: n → 𝕜):
   exact trace_mul_cycle X Y Yᴴ
 
 /-The following theorem proves that X is positive semidefinite if and only if Tr(XS) is nonnegative
-for all positive semidefintie matrices S.-/
-
+for all positive semidefinite matrices S.-/
 theorem PSDiffTraceProdNonNeg (XHerm: X.IsHermitian)
   : X.PosSemidef ↔ ∀ (S : Matrix n n 𝕜), S.PosSemidef → (X * S).trace ≥ 0 := by
   refine⟨?_,?_⟩
@@ -252,7 +317,7 @@ theorem PSDiffTraceProdNonNeg (XHerm: X.IsHermitian)
     exact le_of_le_of_eq h₃ (id (Eq.symm h₄))
   exact PSDTraceNonNeg h₁ /- First direction done -/
 
-  /- appealing to the theorem outer_product_trace,
+  /- appealing to the theorem 'cyclic_outer_product_trace',
   helps use prove the backward direction. -/
   intro TrNonNeg
   unfold PosSemidef
@@ -264,30 +329,27 @@ theorem PSDiffTraceProdNonNeg (XHerm: X.IsHermitian)
 
 /- I never was able to actually formalize the following proof
 A proof can be found on page 115 of Bhatia's Matrix Analysis. -/
-
 theorem sqrtInvertOpMonotone (Xpd : X.PosDef) (Spsd : S.PosSemidef)
 (XleS : X ≤ S) : (Xpd.posSemidef).sqrt ≤ Spsd.sqrt := by
   have Xpsd := Xpd.posSemidef
+  have Spd := PD_ge_implies_PD Xpd XleS
   let A : Matrix n n 𝕜 := S * X⁻¹
   let B : Matrix n n 𝕜 := (Xpsd.sqrt)⁻¹
-  let C : Matrix n n 𝕜 := B * X * B 
-  have Bpsd := PosSemidef.inv (PosSemidef.posSemidef_sqrt Xpsd)
-  have Bherm : Bᴴ = B := by 
-    exact Bpsd.1
-  have Cpsd : PosSemidef C := by
-    simp[C]
-    nth_rw 1 [← Bherm]
-    exact PosSemidef.conjTranspose_mul_mul_same Xpsd B 
-  sorry  
-
+  let C : Matrix n n 𝕜 := B * S * B
+  have Bpd :=  inv_of_posdef_is_posdef (sqrtPD_implies_PD Xpd)
+ 
+  /- The matrix C is PD.  -/
+  have Cpd : PosDef C := by
+    exact mulPD_mulPD_same_PD Spd Bpd
+  sorry
+  
 /- Note that the theorem statement above supposes that X is PD.
 However,  we can prove operator monotonicity of the PSD squareroot in the case
 in which the matrix X is PSD but not necessarily PD using the above theorem.
 Indeed, If 0 ≼ X ≼ S then (X + εI) is PD and (X + εI) ≼ (S + εI). Therefore,
 √(X + εI) ≼ √(S + εI), and taking ε → 0 and appealing to continuity
 of the map X ↦ √X concludes the result. However, there is a lot going on here,
- and it would likely take some time to formalize.
--/
+and it would likely take some time to formalize.-/
 
 theorem sqrtOpMonotone (Xpsd : X.PosSemidef) (Spsd : S.PosSemidef)
 (XleS : X ≤ S) : Xpsd.sqrt ≤ Spsd.sqrt := by
