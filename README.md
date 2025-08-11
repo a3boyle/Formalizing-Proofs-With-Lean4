@@ -5,4 +5,4 @@ This repository contains complete formalizations of Zorn's lemma and the well-or
 The details of the mathematics behind each proof, along with the lean 4 code of the formalizations, can be found in Zorn.lean, Wellordering.lean, and SumOfSquares.lean respectively.
 
 Moreover, this repository contains a formalization of positive semidefinite Hermitian matrices, along with many of their properties. The details of the implementation can be found in FinalProject.lean. 
-Currently, I am working on the formalization of the proof of operator monotonicity of the positive semidefinite squareroot. 
+Currently, I am looking to complete the formalization of the proof of operator monotonicity of the positive semidefinite squareroot. 
